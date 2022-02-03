@@ -1,13 +1,14 @@
 // SPDX-FileCopyrightText: 2021 Open Networking Foundation <info@opennetworking.org>
 //
 // SPDX-License-Identifier: Apache-2.0
-// SPDX-License-Identifier: LicenseRef-ONF-Member-Only-1.0
+//
 
 package main
 
 import (
 	"log"
 	"time"
+
 	//"context"
 	//"fmt"
 	//"os"
@@ -22,9 +23,9 @@ import (
 
 type Student struct {
 	//ID     		primitive.ObjectID 	`bson:"_id,omitempty"`
-	Name      	string				`bson:"name,omitempty"`
-	Age 	  	int 				`bson:"age,omitempty"`
-	CreatedAt 	time.Time			`bson:"createdAt,omitempty"`
+	Name      string    `bson:"name,omitempty"`
+	Age       int       `bson:"age,omitempty"`
+	CreatedAt time.Time `bson:"createdAt,omitempty"`
 }
 
 func main() {
@@ -42,7 +43,7 @@ func main() {
 		log.Println(student.Age)
 		log.Println(student.CreatedAt)
 	} else {
-		log.Println("Error getting student: " + err.Error());
+		log.Println("Error getting student: " + err.Error())
 	}
 
 	insertStudentInDB("John Smith", 25)
@@ -56,7 +57,7 @@ func main() {
 		log.Println(student.Age)
 		log.Println(student.CreatedAt)
 	} else {
-		log.Println("Error getting student: " + err.Error());
+		log.Println("Error getting student: " + err.Error())
 	}
 
 	createDocumentWithTimeout()
@@ -75,7 +76,7 @@ func main() {
 	}
 }
 
-func getStudentFromDB(name string) (Student, error) { 
+func getStudentFromDB(name string) (Student, error) {
 	var student Student
 	filter := bson.M{}
 	filter["name"] = name
@@ -88,13 +89,13 @@ func getStudentFromDB(name string) (Student, error) {
 
 		return student, nil
 	}
-	return student, err	
+	return student, err
 }
 
 func insertStudentInDB(name string, age int) {
-	student := Student {
-		Name: name,
-		Age: age,
+	student := Student{
+		Name:      name,
+		Age:       age,
 		CreatedAt: time.Now(),
 	}
 	filter := bson.M{}
