@@ -9,19 +9,19 @@ package MongoDBLibrary
 import (
 	"context"
 	"encoding/json"
-	"time"
 	"errors"
 	"math/rand"
 	"os"
+	"time"
 
 	jsonpatch "github.com/evanphx/json-patch"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/x/bsonx"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 
-	"github.com/free5gc/MongoDBLibrary/logger"
+	"github.com/omec-project/MongoDBLibrary/logger"
 )
 
 var Client *mongo.Client = nil
@@ -97,7 +97,7 @@ func GetUniqueIdentity() int32 {
 			counterData["count"] = 1
 			counterData["_id"] = "uniqueIdentity"
 			counterCollection.InsertOne(context.TODO(), counterData)
-			
+
 			continue
 		} else {
 			data := bson.M{}
@@ -123,14 +123,14 @@ func GetUniqueIdentityWithinRange(min int32, max int32) int32 {
 			counterData["count"] = min
 			counterData["_id"] = "uniqueIdentity"
 			rangeCollection.InsertOne(context.TODO(), counterData)
-			
+
 			continue
 		} else {
 			data := bson.M{}
 			count.Decode(&data)
 			decodedCount := data["count"].(int32)
 
-			if (decodedCount >= max || decodedCount <= min) {
+			if decodedCount >= max || decodedCount <= min {
 				err := errors.New("Unique identity is out of range.")
 				logger.MongoDBLog.Println(err)
 				return -1
@@ -162,18 +162,18 @@ func GetChunkFromPool(poolName string) (int32, int32, int32, error) {
 	if pool == nil {
 		err := errors.New("This pool has not been initialized yet. Initialize by calling InitializeChunkPool.")
 		return -1, -1, -1, err
-	} 
+	}
 
 	min := pool["min"]
 	max := pool["max"]
 	retries := pool["retries"]
 	chunkSize := pool["chunkSize"]
-	totalChunks := int((max - min)/chunkSize) 
+	totalChunks := int((max - min) / chunkSize)
 
 	i := 0
 	for i < retries {
 		random := rand.Intn(totalChunks)
-		lower := min + (random*chunkSize)
+		lower := min + (random * chunkSize)
 		upper := lower + chunkSize
 		poolCollection := Client.Database(dbName).Collection(poolName)
 
@@ -190,16 +190,16 @@ func GetChunkFromPool(poolName string) (int32, int32, int32, error) {
 		result := poolCollection.FindOneAndUpdate(context.TODO(), bson.M{"_id": random}, bson.M{"$setOnInsert": data}, &opt)
 
 		if result.Err() != nil {
-			// means that there was no document with that id, so the upsert should have been successful 
-			if (result.Err() == mongo.ErrNoDocuments) {
+			// means that there was no document with that id, so the upsert should have been successful
+			if result.Err() == mongo.ErrNoDocuments {
 				logger.MongoDBLog.Println("Assigned chunk # ", random, " with range ", lower, " - ", upper)
 				return int32(random), int32(lower), int32(upper), nil
 			}
-			
+
 			return -1, -1, -1, result.Err()
 		}
-		// means there was a document before the update and result contains that document. 
-		logger.MongoDBLog.Println("Chunk", random, " has already been assigned. ", retries - i - 1, " retries left.")
+		// means there was a document before the update and result contains that document.
+		logger.MongoDBLog.Println("Chunk", random, " has already been assigned. ", retries-i-1, " retries left.")
 		i++
 	}
 
@@ -212,12 +212,12 @@ func ReleaseChunkToPool(poolName string, id int32) {
 	logger.MongoDBLog.Println("ENTERING ReleaseChunkToPool")
 	poolCollection := Client.Database(dbName).Collection(poolName)
 
-	// only want to delete if the currentApp is the owner of this id. 
+	// only want to delete if the currentApp is the owner of this id.
 	currentApp := os.Getenv("HOSTNAME")
 	logger.MongoDBLog.Println(currentApp)
 
 	_, err := poolCollection.DeleteOne(context.TODO(), bson.M{"_id": id, "owner": currentApp})
-	if (err != nil) {
+	if err != nil {
 		logger.MongoDBLog.Panic(err)
 	}
 }
@@ -243,14 +243,14 @@ func GetIDFromInsertPool(poolName string) (int32, error) {
 	if pool == nil {
 		err := errors.New("This pool has not been initialized yet. Initialize by calling InitializeInsertPool.")
 		return -1, err
-	} 
+	}
 
 	min := pool["min"]
 	max := pool["max"]
 	retries := pool["retries"]
 	i := 0
 	for i < retries {
-		random := rand.Intn(max - min) + min // returns random int in [0, max-min-1] + min 
+		random := rand.Intn(max-min) + min // returns random int in [0, max-min-1] + min
 		poolCollection := Client.Database(dbName).Collection(poolName)
 
 		// Create an instance of an options and set the desired options
@@ -261,15 +261,15 @@ func GetIDFromInsertPool(poolName string) (int32, error) {
 		result := poolCollection.FindOneAndUpdate(context.TODO(), bson.M{"_id": random}, bson.M{"$set": bson.M{"_id": random}}, &opt)
 
 		if result.Err() != nil {
-			// means that there was no document with that id, so the upsert should have been successful 
+			// means that there was no document with that id, so the upsert should have been successful
 			if result.Err().Error() == "mongo: no documents in result" {
 				logger.MongoDBLog.Println("Assigned id: ", random)
 				return int32(random), nil
 			}
-			
+
 			return -1, result.Err()
 		}
-		// means there was a document before the update and result contains that document. 
+		// means there was a document before the update and result contains that document.
 		logger.MongoDBLog.Println("This id has already been assigned. ")
 		doc := bson.M{}
 		result.Decode(&doc)
@@ -288,7 +288,7 @@ func ReleaseIDToInsertPool(poolName string, id int32) {
 	poolCollection := Client.Database(dbName).Collection(poolName)
 
 	_, err := poolCollection.DeleteOne(context.TODO(), bson.M{"_id": id})
-	if (err != nil) {
+	if err != nil {
 		logger.MongoDBLog.Panic(err)
 	}
 }
@@ -303,7 +303,7 @@ func InitializePool(poolName string, min int32, max int32) {
 		return
 	}
 
-	logger.MongoDBLog.Println(names);
+	logger.MongoDBLog.Println(names)
 
 	exists := false
 	for _, name := range names {
@@ -324,7 +324,7 @@ func InitializePool(poolName string, min int32, max int32) {
 		poolData["ids"] = array
 		poolData["_id"] = poolName
 
-		// collection is created when inserting document. 
+		// collection is created when inserting document.
 		// "If a collection does not exist, MongoDB creates the collection when you first store data for that collection."
 		poolCollection.InsertOne(context.TODO(), poolData)
 	}
@@ -336,7 +336,7 @@ func GetIDFromPool(poolName string) (int32, error) {
 	poolCollection := Client.Database(dbName).Collection(poolName)
 
 	result := bson.M{}
-	poolCollection.FindOneAndUpdate(context.TODO(), bson.M{"_id": poolName}, bson.M{"$pop": bson.M{"ids":1}}).Decode(&result)
+	poolCollection.FindOneAndUpdate(context.TODO(), bson.M{"_id": poolName}, bson.M{"$pop": bson.M{"ids": 1}}).Decode(&result)
 
 	var array []int32
 	interfaces := []interface{}(result["ids"].(primitive.A))
@@ -347,7 +347,7 @@ func GetIDFromPool(poolName string) (int32, error) {
 
 	logger.MongoDBLog.Println("Array of ids: ", array)
 	if len(array) > 0 {
-		res := array[len(array) - 1]
+		res := array[len(array)-1]
 		return res, nil
 	} else {
 		err := errors.New("There are no available ids.")
@@ -361,7 +361,7 @@ func ReleaseIDToPool(poolName string, id int32) {
 	logger.MongoDBLog.Println("ENTERING ReleaseIDToPool")
 	poolCollection := Client.Database(dbName).Collection(poolName)
 
-	poolCollection.UpdateOne(context.TODO(), bson.M{"_id": poolName}, bson.M{"$push": bson.M{"ids":id}})
+	poolCollection.UpdateOne(context.TODO(), bson.M{"_id": poolName}, bson.M{"$push": bson.M{"ids": id}})
 }
 
 func GetOneCustomDataStructure(collName string, filter bson.M) (bson.M, error) {
@@ -382,7 +382,7 @@ func GetOneCustomDataStructure(collName string, filter bson.M) (bson.M, error) {
 func PutOneCustomDataStructure(collName string, filter bson.M, putData interface{}) bool {
 	collection := Client.Database(dbName).Collection(collName)
 
-	var checkItem map[string] interface{}
+	var checkItem map[string]interface{}
 	collection.FindOne(context.TODO(), filter).Decode(&checkItem)
 
 	if checkItem == nil {
