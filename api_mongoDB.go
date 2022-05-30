@@ -1,3 +1,4 @@
+// SPDX-FileCopyrightText: 2022-present Intel Corporation
 // SPDX-FileCopyrightText: 2021 Open Networking Foundation <info@opennetworking.org>
 // Copyright 2019 free5GC.org
 //
@@ -10,8 +11,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"math/rand"
 	"os"
+	"strings"
 	"time"
 
 	jsonpatch "github.com/evanphx/json-patch"
@@ -38,7 +41,7 @@ func SetMongoDB(setdbName string, url string) {
 	defer cancel()
 	if err != nil {
 		//defer cancel()
-		logger.MongoDBLog.Panic(err.Error())
+		logger.MongoDBLog.Println("SetMongoDB: Mongo connect failed for url (", url, ") : ", err.Error())
 	}
 	Client = client
 	dbName = setdbName
@@ -63,19 +66,20 @@ func RestfulAPIGetMany(collName string, filter bson.M) []map[string]interface{} 
 	cur, err := collection.Find(ctx, filter)
 	defer cancel()
 	if err != nil {
-		logger.MongoDBLog.Fatal(err)
+		logger.MongoDBLog.Println("RestfulAPIGetMany : DB fetch failed for collection (", collName, ") : ", err)
+		return nil
 	}
 	defer cur.Close(ctx)
 	for cur.Next(ctx) {
 		var result map[string]interface{}
 		err := cur.Decode(&result)
 		if err != nil {
-			logger.MongoDBLog.Fatal(err)
+			logger.MongoDBLog.Println("RestfulAPIGetMany : Cursor decode failed for collection (", collName, ") : ", err)
 		}
 		resultArray = append(resultArray, result)
 	}
 	if err := cur.Err(); err != nil {
-		logger.MongoDBLog.Fatal(err)
+		logger.MongoDBLog.Println("RestfulAPIGetMany : Cursor read error for collection (", collName, ") : ", err)
 	}
 
 	return resultArray
@@ -218,7 +222,7 @@ func ReleaseChunkToPool(poolName string, id int32) {
 
 	_, err := poolCollection.DeleteOne(context.TODO(), bson.M{"_id": id, "owner": currentApp})
 	if err != nil {
-		logger.MongoDBLog.Panic(err)
+		logger.MongoDBLog.Println("Release Chunk(", id, ") to Pool(", poolName, ") failed : ", err)
 	}
 }
 
@@ -289,7 +293,7 @@ func ReleaseIDToInsertPool(poolName string, id int32) {
 
 	_, err := poolCollection.DeleteOne(context.TODO(), bson.M{"_id": id})
 	if err != nil {
-		logger.MongoDBLog.Panic(err)
+		logger.MongoDBLog.Println("Release Id(", id, ") to Pool(", poolName, ") failed : ", err)
 	}
 }
 
@@ -379,10 +383,100 @@ func GetOneCustomDataStructure(collName string, filter bson.M) (bson.M, error) {
 	return result, err
 }
 
-func PutOneCustomDataStructure(collName string, filter bson.M, putData interface{}) bool {
+func PutOneCustomDataStructure(collName string, filter bson.M, putData interface{}) (bool, error) {
 	collection := Client.Database(dbName).Collection(collName)
 
 	var checkItem map[string]interface{}
+	collection.FindOne(context.TODO(), filter).Decode(&checkItem)
+
+	if checkItem == nil {
+		_, err := collection.InsertOne(context.TODO(), putData)
+		if err != nil {
+			logger.MongoDBLog.Println("insert failed : ", err)
+			return false, err
+		}
+		return true, nil
+	} else {
+		collection.UpdateOne(context.TODO(), filter, bson.M{"$set": putData})
+		return true, nil
+	}
+}
+
+func CreateIndex(collName string, keyField string) (bool, error) {
+	collection := Client.Database(dbName).Collection(collName)
+
+	index := mongo.IndexModel{
+		Keys:    bsonx.Doc{{Key: keyField, Value: bsonx.Int32(1)}},
+		Options: options.Index().SetUnique(true),
+	}
+
+	idx, err := collection.Indexes().CreateOne(context.Background(), index)
+	if err != nil {
+		logger.MongoDBLog.Error("Create Index failed : ", keyField, err)
+		return false, err
+	}
+
+	logger.MongoDBLog.Println("Created index : ", idx, " on keyField : ", keyField, " for Collection : ", collName)
+
+	return true, nil
+}
+
+// This API adds document to collection with name : "collName"
+// This API should be used when we wish to update the timeout value for the TTL index
+// It checks if an Index with name "indexName" exists on the collection.
+// If such an Index is "indexName" is found, we drop the index and then
+// add new Index with new timeout value.
+func RestfulAPIPatchOneTimeout(collName string, filter bson.M, putData map[string]interface{}, timeout int32, timeField string) bool {
+	collection := Client.Database(dbName).Collection(collName)
+	var checkItem map[string]interface{}
+
+	//fetch all Indexes on collection
+	cursor, err := collection.Indexes().List(context.TODO())
+
+	if err != nil {
+		logger.MongoDBLog.Println("RestfulAPIPatchOneTimeout : List Index failed for collection (", collName, ") : ", err)
+		return false
+	}
+
+	var result []bson.M
+	// convert to map
+	if err = cursor.All(context.TODO(), &result); err != nil {
+		logger.MongoDBLog.Println("RestfulAPIPatchOneTimeout : Cursor decode failed for collection (", collName, ") : ", err)
+	}
+
+	// loop through the map and check for entry with key as name
+	// for every entry with key as name,check if the value string contains the timeField string.
+	// the Indexes are generally named such as follows :
+	// field name : createdAt, index name : createdAt_1
+	// drop the index if found.
+	drop := false
+	for _, v := range result {
+		for k1, v1 := range v {
+			valStr := fmt.Sprint(v1)
+			if (k1 == "name") && strings.Contains(valStr, timeField) {
+				_, err = collection.Indexes().DropOne(context.Background(), valStr)
+				if err != nil {
+					logger.MongoDBLog.Println("Drop Index on field (", timeField, ") for collection (", collName, ") failed : ", err)
+					break
+				}
+			}
+		}
+		if drop {
+			break
+		}
+	}
+
+	//create new index with new timeout
+	index := mongo.IndexModel{
+		Keys:    bsonx.Doc{{Key: timeField, Value: bsonx.Int32(1)}},
+		Options: options.Index().SetExpireAfterSeconds(timeout),
+	}
+
+	_, err = collection.Indexes().CreateOne(context.Background(), index)
+	if err != nil {
+		logger.MongoDBLog.Println("Index on field (", timeField, ") for collection (", collName, ") already exists : ", err)
+	}
+
 	collection.FindOne(context.TODO(), filter).Decode(&checkItem)
 
 	if checkItem == nil {
@@ -394,11 +488,18 @@ func PutOneCustomDataStructure(collName string, filter bson.M, putData interface
 	}
 }
 
-func PutOneWithTimeout(collName string, filter bson.M, putData map[string]interface{}, timeout int32, timeField string) bool {
+// This API adds document to collection with name : "collName"
+// It also creates an Index with Time to live (TTL) on the collection.
+// All Documents in the collection will have the the same TTL. The timestamps
+// each document can be different and can be updated as per procedure.
+// If the Index with same timeout value is present already then it
+// does not create a new one.
+// If the Index exists on the same "timeField" with a different timeout,
+// then API will return error saying Index already exists.
+func RestfulAPIPutOneTimeout(collName string, filter bson.M, putData map[string]interface{}, timeout int32, timeField string) bool {
 	collection := Client.Database(dbName).Collection(collName)
 	var checkItem map[string]interface{}
 
-	// TTL index
 	index := mongo.IndexModel{
 		Keys:    bsonx.Doc{{Key: timeField, Value: bsonx.Int32(1)}},
 		Options: options.Index().SetExpireAfterSeconds(timeout),
@@ -406,7 +507,7 @@ func PutOneWithTimeout(collName string, filter bson.M, putData map[string]interf
 
 	_, err := collection.Indexes().CreateOne(context.Background(), index)
 	if err != nil {
-		logger.MongoDBLog.Panic(err)
+		logger.MongoDBLog.Println("Index creation failed for Field : ", timeField, " in Collection : ", collName)
 	}
 
 	collection.FindOne(context.TODO(), filter).Decode(&checkItem)
@@ -500,12 +601,12 @@ func RestfulAPIMergePatch(collName string, filter bson.M, patchData map[string]i
 
 		patchDataByte, err := json.Marshal(patchData)
 		if err != nil {
-			logger.MongoDBLog.Panic(err)
+			logger.MongoDBLog.Println("RestfulAPIMergePatch: Json Marshal failed for collection (", collName, ") : ", err)
 		}
 
 		modifiedAlternative, err := jsonpatch.MergePatch(original, patchDataByte)
 		if err != nil {
-			logger.MongoDBLog.Panic(err)
+			logger.MongoDBLog.Println("RestfulAPIMergePatch: Json merge patch failed for collection (", collName, ") : ", err)
 		}
 
 		var modifiedData map[string]interface{}
@@ -530,12 +631,12 @@ func RestfulAPIJSONPatch(collName string, filter bson.M, patchJSON []byte) bool 
 
 		patch, err := jsonpatch.DecodePatch(patchJSON)
 		if err != nil {
-			logger.MongoDBLog.Panic(err)
+			logger.MongoDBLog.Println("RestfulAPIJSONPatch: Json decode patch failed for collection (", collName, ") : ", err)
 		}
 
 		modified, err := patch.Apply(original)
 		if err != nil {
-			logger.MongoDBLog.Panic(err)
+			logger.MongoDBLog.Println("RestfulAPIJSONPatch: Patch apply failed for collection (", collName, ") : ", err)
 		}
 
 		var modifiedData map[string]interface{}
@@ -563,12 +664,12 @@ func RestfulAPIJSONPatchExtend(collName string, filter bson.M, patchJSON []byte,
 		jsonpatch.DecodePatch(patchJSON)
 		patch, err := jsonpatch.DecodePatch(patchJSON)
 		if err != nil {
-			logger.MongoDBLog.Panic(err)
+			logger.MongoDBLog.Println("RestfulAPIJSONPatchExtend: Patch decode failed for collection (", collName, ") : ", err)
 		}
 
 		modified, err := patch.Apply(original)
 		if err != nil {
-			logger.MongoDBLog.Panic(err)
+			logger.MongoDBLog.Println("RestfulAPIJSONPatchExtend: Patch apply failed for collection (", collName, ") : ", err)
 		}
 
 		var modifiedData map[string]interface{}
@@ -582,13 +683,24 @@ func RestfulAPIPost(collName string, filter bson.M, postData map[string]interfac
 	collection := Client.Database(dbName).Collection(collName)
 
 	var checkItem map[string]interface{}
-	collection.FindOne(context.TODO(), filter).Decode(&checkItem)
+	err := collection.FindOne(context.TODO(), filter).Decode(&checkItem)
+	if err != nil {
+		logger.MongoDBLog.Println("item not found: ", err)
+	}
 
 	if checkItem == nil {
-		collection.InsertOne(context.TODO(), postData)
+		_, err := collection.InsertOne(context.TODO(), postData)
+		if err != nil {
+			logger.MongoDBLog.Println("insert failed : ", err)
+			return false
+		}
 		return false
 	} else {
-		collection.UpdateOne(context.TODO(), filter, bson.M{"$set": postData})
+		_, err := collection.UpdateOne(context.TODO(), filter, bson.M{"$set": postData})
+		if err != nil {
+			logger.MongoDBLog.Println("update failed : ", err)
+			return false
+		}
 		return true
 	}
 }
