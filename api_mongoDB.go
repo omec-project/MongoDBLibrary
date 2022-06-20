@@ -421,6 +421,60 @@ func CreateIndex(collName string, keyField string) (bool, error) {
 	return true, nil
 }
 
+// To create Index with common timeout for all documents, set timeout to desired value
+// To create Index with custom timeout per document, set timeout to 0.
+// To create Index with common timeout use timefield name like : updatedAt
+// To create Index with custom timeout use timefield name like : expireAt
+func RestfulAPICreateTTLIndex(collName string, timeout int32, timeField string) bool {
+	collection := Client.Database(dbName).Collection(collName)
+	index := mongo.IndexModel{
+		Keys:    bsonx.Doc{{Key: timeField, Value: bsonx.Int32(1)}},
+		Options: options.Index().SetExpireAfterSeconds(timeout).SetName(timeField),
+	}
+
+	_, err := collection.Indexes().CreateOne(context.Background(), index)
+	if err != nil {
+		logger.MongoDBLog.Println("Index creation failed for Field : ", timeField, " in Collection : ", collName, " Error Cause : ", err)
+		return false
+	}
+
+	return true
+}
+
+// Use this API to drop TTL Index.
+func RestfulAPIDropTTLIndex(collName string, timeField string) bool {
+	collection := Client.Database(dbName).Collection(collName)
+	_, err := collection.Indexes().DropOne(context.Background(), timeField)
+	if err != nil {
+		logger.MongoDBLog.Println("Drop Index on field (", timeField, ") for collection (", collName, ") failed : ", err)
+		return false
+	}
+
+	return true
+}
+
+// Use this API to update timeout value for TTL Index.
+func RestfulAPIPatchTTLIndex(collName string, timeout int32, timeField string) bool {
+	collection := Client.Database(dbName).Collection(collName)
+	_, err := collection.Indexes().DropOne(context.Background(), timeField)
+	if err != nil {
+		logger.MongoDBLog.Println("Drop Index on field (", timeField, ") for collection (", collName, ") failed : ", err)
+	}
+
+	//create new index with new timeout
+	index := mongo.IndexModel{
+		Keys:    bsonx.Doc{{Key: timeField, Value: bsonx.Int32(1)}},
+		Options: options.Index().SetExpireAfterSeconds(timeout).SetName(timeField),
+	}
+
+	_, err = collection.Indexes().CreateOne(context.Background(), index)
+	if err != nil {
+		logger.MongoDBLog.Println("Index on field (", timeField, ") for collection (", collName, ") already exists : ", err)
+	}
+
+	return true
+}
+
 // This API adds document to collection with name : "collName"
 // This API should be used when we wish to update the timeout value for the TTL index
 // It checks if an Index with name "indexName" exists on the collection.
@@ -500,7 +554,7 @@ func RestfulAPIPutOneTimeout(collName string, filter bson.M, putData map[string]
 	collection := Client.Database(dbName).Collection(collName)
 	var checkItem map[string]interface{}
 
-	index := mongo.IndexModel{
+	/*index := mongo.IndexModel{
 		Keys:    bsonx.Doc{{Key: timeField, Value: bsonx.Int32(1)}},
 		Options: options.Index().SetExpireAfterSeconds(timeout),
 	}
@@ -508,7 +562,7 @@ func RestfulAPIPutOneTimeout(collName string, filter bson.M, putData map[string]
 	_, err := collection.Indexes().CreateOne(context.Background(), index)
 	if err != nil {
 		logger.MongoDBLog.Println("Index creation failed for Field : ", timeField, " in Collection : ", collName)
-	}
+	}*/
 
 	collection.FindOne(context.TODO(), filter).Decode(&checkItem)
 

@@ -89,11 +89,42 @@ func main() {
 	routineCtx, _ := context.WithCancel(context.Background())
 	//run routine to get messages from stream
 	go iterateChangeStream(routineCtx, timeoutStream)
-	createDocumentWithTimeout("timeout", "yak1", 60, "createdAt")
-	createDocumentWithTimeout("timeout", "yak2", 60, "createdAt")
+	//createDocumentWithTimeout("timeout", "yak1", 60, "createdAt")
+	//createDocumentWithTimeout("timeout", "yak2", 60, "createdAt")
+	ret := MongoDBLibrary.RestfulAPICreateTTLIndex("timeout", 20, "updatedAt")
+	if ret {
+		log.Println("TTL index create successful")
+	} else {
+		log.Println("TTL index exists already")
+	}
+
+	createDocumentWithCommonTimeout("timeout", "yak1")
+	updateDocumentWithCommonTimeout("timeout", "yak1")
+	go func() {
+		for {
+			createDocumentWithCommonTimeout("timeout", "yak2")
+			time.Sleep(5 * time.Second)
+		}
+	}()
+
+	ret = MongoDBLibrary.RestfulAPIDropTTLIndex("timeout", "updatedAt")
+	if !ret {
+		log.Println("TTL index drop failed")
+	}
+	ret = MongoDBLibrary.RestfulAPIPatchTTLIndex("timeout", 0, "expireAt")
+	if ret {
+		log.Println("TTL index patch successful")
+	} else {
+		log.Println("TTL index patch failed")
+	}
+
+	createDocumentWithExpiryTime("timeout", "yak1", 30)
+	createDocumentWithExpiryTime("timeout", "yak3", 30)
+	updateDocumentWithExpiryTime("timeout", "yak3", 40)
+	updateDocumentWithExpiryTime("timeout", "yak1", 50)
 	//log.Println("sleeping for 120 seconds")
 	//time.Sleep(120 * time.Second)
-	updateDocumentWithTimeout("timeout", "yak1", 200, "createdAt")
+	//updateDocumentWithTimeout("timeout", "yak1", 200, "createdAt")
 
 	uniqueId := MongoDBLibrary.GetUniqueIdentity()
 	log.Println(uniqueId)
@@ -237,20 +268,45 @@ func deleteDocumentWithTimeout(name string) {
 	MongoDBLibrary.RestfulAPIDeleteOne("timeout", filter)
 }
 
-func createDocumentWithTimeout(collName string, name string, timeVal int, fieldName string) {
+func createDocumentWithExpiryTime(collName string, name string, timeVal int) {
 	putData := bson.M{}
 	putData["name"] = name
 	putData["createdAt"] = time.Now()
-	//putData["customInfo"] = bson.M{"updatedAt": interface{}(time.Now())}
+	timein := time.Now().Local().Add(time.Second * time.Duration(timeVal))
+	//log.Println("updated timeout : ", timein)
+	putData["expireAt"] = timein
+	//putData["updatedAt"] = time.Now()
 	filter := bson.M{"name": name}
-	MongoDBLibrary.RestfulAPIPutOneTimeout(collName, filter, putData,
-		int32(timeVal), fieldName)
+	MongoDBLibrary.RestfulAPIPutOne(collName, filter, putData)
 }
 
-func updateDocumentWithTimeout(collName string, name string, timeVal int, fieldName string) {
+func updateDocumentWithExpiryTime(collName string, name string, timeVal int) {
 	putData := bson.M{}
 	putData["name"] = name
 	//putData["createdAt"] = time.Now()
+	timein := time.Now().Local().Add(time.Second * time.Duration(timeVal))
+	putData["expireAt"] = timein
 	filter := bson.M{"name": name}
-	MongoDBLibrary.RestfulAPIPatchOneTimeout("timeout", filter, putData, 200, "createdAt")
+	MongoDBLibrary.RestfulAPIPutOne(collName, filter, putData)
+}
+
+func createDocumentWithCommonTimeout(collName string, name string) {
+	putData := bson.M{}
+	putData["name"] = name
+	putData["createdAt"] = time.Now()
+	//timein := time.Now().Local().Add(time.Second * time.Duration(20))
+	//log.Println("updated timeout : ", timein)
+	//putData["updatedAt"] = timein
+	putData["updatedAt"] = time.Now()
+	filter := bson.M{"name": name}
+	MongoDBLibrary.RestfulAPIPutOne(collName, filter, putData)
+}
+
+func updateDocumentWithCommonTimeout(collName string, name string) {
+	putData := bson.M{}
+	putData["name"] = name
+	//putData["createdAt"] = time.Now()
+	putData["updatedAt"] = time.Now()
+	filter := bson.M{"name": name}
+	MongoDBLibrary.RestfulAPIPutOne("timeout", filter, putData)
 }
