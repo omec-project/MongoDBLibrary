@@ -126,10 +126,10 @@ func main() {
 	//time.Sleep(120 * time.Second)
 	//updateDocumentWithTimeout("timeout", "yak1", 200, "createdAt")
 
-	uniqueId := MongoDBLibrary.GetUniqueIdentity()
+	uniqueId := MongoDBLibrary.GetUniqueIdentity("tmsi")
 	log.Println(uniqueId)
 
-	uniqueId = MongoDBLibrary.GetUniqueIdentity()
+	uniqueId = MongoDBLibrary.GetUniqueIdentity("amfUeNgapId")
 	log.Println(uniqueId)
 
 	uniqueId = MongoDBLibrary.GetUniqueIdentityWithinRange(3, 6)

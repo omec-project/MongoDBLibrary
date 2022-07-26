@@ -87,23 +87,25 @@ func RestfulAPIGetMany(collName string, filter bson.M) []map[string]interface{} 
 }
 
 /* Get unique identity from counter collection. */
-func GetUniqueIdentity() int32 {
+func GetUniqueIdentity(idName string) int32 {
 	counterCollection := Client.Database(dbName).Collection("counter")
 
 	counterFilter := bson.M{}
-	counterFilter["_id"] = "uniqueIdentity"
+	counterFilter["_id"] = idName
 
 	for {
 		count := counterCollection.FindOneAndUpdate(context.TODO(), counterFilter, bson.M{"$inc": bson.M{"count": 1}})
 
 		if count.Err() != nil {
+			logger.MongoDBLog.Println("FindOneAndUpdate error. Create entry for field  ")
 			counterData := bson.M{}
 			counterData["count"] = 1
-			counterData["_id"] = "uniqueIdentity"
+			counterData["_id"] = idName
 			counterCollection.InsertOne(context.TODO(), counterData)
 
 			continue
 		} else {
+			logger.MongoDBLog.Println("found entry. inc and return")
 			data := bson.M{}
 			count.Decode(&data)
 			decodedCount := data["count"].(int32)
