@@ -774,7 +774,7 @@ func RestfulAPIPostOnly(collName string, filter bson.M, postData map[string]inte
 	var checkItem map[string]interface{}
 	err := collection.FindOne(context.TODO(), filter).Decode(&checkItem)
 	if err == nil {
-		logger.MongoDBLog.Println("item not found: ", err)
+		logger.MongoDBLog.Println("item found: ", err)
 		return false
 	}
 	_, err = collection.InsertOne(context.TODO(), postData)

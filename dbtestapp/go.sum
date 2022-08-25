@@ -141,8 +141,8 @@ github.com/stretchr/testify v1.4.0/go.mod h1:j7eGeouHqKxXV5pUuKE4zz7dFj8WfuZ+81P
 github.com/stretchr/testify v1.6.1/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
 github.com/stretchr/testify v1.7.0 h1:nwc3DEeHmmLAfoZucVR881uASk0Mfjw8xYJ99tb5CcY=
 github.com/stretchr/testify v1.7.0/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
-github.com/thakurajayL/drsm v0.0.65-dev.0.20220825204158-2ec46f36d550 h1:VlFvMZh6nszkmxcEMWAc06DGDi6mlz28Y+rYspOVs98=
-github.com/thakurajayL/drsm v0.0.65-dev.0.20220825204158-2ec46f36d550/go.mod h1:w1Eo435ZmTHtcx+gwz1busAVcRCQxRrjYQZawikPAw0=
+github.com/thakurajayL/drsm v0.0.65-dev.0.20220825211150-dc046641af37 h1:7yJSWCK1csBUTeQ70YP64xn527+rF9Iv6hItJHkJD3Q=
+github.com/thakurajayL/drsm v0.0.65-dev.0.20220825211150-dc046641af37/go.mod h1:E4g/xxSxC/cME3qntJwSb3801eYDFmuX4OGmk38l0/U=
 github.com/tidwall/pretty v1.0.0 h1:HsD+QiTn7sK6flMKIvNmpqz1qrpP3Ps6jOKIKMooyg4=
 github.com/tidwall/pretty v1.0.0/go.mod h1:XNkn88O1ChpSDQmQeStsy+sBenx6DDtFZJxhVysOjyk=
 github.com/ugorji/go v1.1.7/go.mod h1:kZn38zHttfInRq0xu/PH0az30d+z6vm202qpg1oXVMw=
