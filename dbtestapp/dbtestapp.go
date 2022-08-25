@@ -9,9 +9,11 @@ package main
 import (
 	"context"
 	"log"
+	"os"
 	"time"
 
 	"github.com/omec-project/MongoDBLibrary"
+	"github.com/thakurajayL/drsm"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 )
@@ -39,193 +41,204 @@ func iterateChangeStream(routineCtx context.Context, stream *mongo.ChangeStream)
 
 func main() {
 	log.Println("dbtestapp started")
-
-	// connect to mongoDB
-	MongoDBLibrary.SetMongoDB("sdcore", "mongodb://mongodb:27017")
-
-	_, errVal := MongoDBLibrary.CreateIndex("student", "Name")
-	if errVal != nil {
-		log.Println("Create index failed on Name field : ", errVal)
-	}
-
-	//add document to student collection.
-	insertStudentInDB("student", "Osman Amjad", 21)
-	//update document in student collection.
-	insertStudentInDB("student", "Osman Amjad", 22)
-	//fetch document from student db based on index
-	student, err := getStudentFromDB("student", "Osman Amjad")
-	if err == nil {
-		log.Println("Printing student1")
-		log.Println(student)
-		log.Println(student.Name)
-		log.Println(student.Age)
-		log.Println(student.CreatedAt)
-	} else {
-		log.Println("Error getting student: " + err.Error())
-	}
-
-	insertStudentInDB("student", "John Smith", 25)
-
-	// test document fetch from student that doesn't exist.
-	student, err = getStudentFromDB("student", "Nerf Doodle")
-	if err == nil {
-		log.Println("Printing student2")
-		log.Println(student)
-		log.Println(student.Name)
-		log.Println(student.Age)
-		log.Println(student.CreatedAt)
-	} else {
-		log.Println("Error getting student: " + err.Error())
-	}
-
-	log.Println("starting timeout document")
-	database := MongoDBLibrary.Client.Database("sdcore")
-	timeoutColl := database.Collection("timeout")
-	//create stream to monitor actions on the collection
-	timeoutStream, err := timeoutColl.Watch(context.TODO(), mongo.Pipeline{})
+	podn := os.Getenv("HOSTNAME")
+	podi := os.Getenv("PDO_IP")
+	podId := drsm.PodId{PodName: podn, PodIp: podi}
+	db := drsm.DbInfo{Url: "mongodb://mongodb-arbiter-headless", Name: "sdcore"}
+	d, _ := drsm.InitDRSM("ngapid", podId, db)
+	id, err := d.AllocateIntID("ngapid")
 	if err != nil {
-		panic(err)
+		log.Println("Id allocation error ", err)
 	}
-	routineCtx, _ := context.WithCancel(context.Background())
-	//run routine to get messages from stream
-	go iterateChangeStream(routineCtx, timeoutStream)
-	//createDocumentWithTimeout("timeout", "yak1", 60, "createdAt")
-	//createDocumentWithTimeout("timeout", "yak2", 60, "createdAt")
-	ret := MongoDBLibrary.RestfulAPICreateTTLIndex("timeout", 20, "updatedAt")
-	if ret {
-		log.Println("TTL index create successful")
-	} else {
-		log.Println("TTL index exists already")
-	}
+	log.Printf("Received id %v ", id)
 
-	createDocumentWithCommonTimeout("timeout", "yak1")
-	updateDocumentWithCommonTimeout("timeout", "yak1")
-	go func() {
-		for {
-			createDocumentWithCommonTimeout("timeout", "yak2")
-			time.Sleep(5 * time.Second)
+	/*
+		// connect to mongoDB
+		MongoDBLibrary.SetMongoDB("sdcore", "mongodb://mongodb:27017")
+
+		_, errVal := MongoDBLibrary.CreateIndex("student", "Name")
+		if errVal != nil {
+			log.Println("Create index failed on Name field : ", errVal)
 		}
-	}()
 
-	ret = MongoDBLibrary.RestfulAPIDropTTLIndex("timeout", "updatedAt")
-	if !ret {
-		log.Println("TTL index drop failed")
-	}
-	ret = MongoDBLibrary.RestfulAPIPatchTTLIndex("timeout", 0, "expireAt")
-	if ret {
-		log.Println("TTL index patch successful")
-	} else {
-		log.Println("TTL index patch failed")
-	}
+		//add document to student collection.
+		insertStudentInDB("student", "Osman Amjad", 21)
+		//update document in student collection.
+		insertStudentInDB("student", "Osman Amjad", 22)
+		//fetch document from student db based on index
+		student, err := getStudentFromDB("student", "Osman Amjad")
+		if err == nil {
+			log.Println("Printing student1")
+			log.Println(student)
+			log.Println(student.Name)
+			log.Println(student.Age)
+			log.Println(student.CreatedAt)
+		} else {
+			log.Println("Error getting student: " + err.Error())
+		}
 
-	createDocumentWithExpiryTime("timeout", "yak1", 30)
-	createDocumentWithExpiryTime("timeout", "yak3", 30)
-	updateDocumentWithExpiryTime("timeout", "yak3", 40)
-	updateDocumentWithExpiryTime("timeout", "yak1", 50)
-	//log.Println("sleeping for 120 seconds")
-	//time.Sleep(120 * time.Second)
-	//updateDocumentWithTimeout("timeout", "yak1", 200, "createdAt")
+		insertStudentInDB("student", "John Smith", 25)
 
-	uniqueId := MongoDBLibrary.GetUniqueIdentity("tmsi")
-	log.Println(uniqueId)
+		// test document fetch from student that doesn't exist.
+		student, err = getStudentFromDB("student", "Nerf Doodle")
+		if err == nil {
+			log.Println("Printing student2")
+			log.Println(student)
+			log.Println(student.Name)
+			log.Println(student.Age)
+			log.Println(student.CreatedAt)
+		} else {
+			log.Println("Error getting student: " + err.Error())
+		}
 
-	uniqueId = MongoDBLibrary.GetUniqueIdentity("amfUeNgapId")
-	log.Println(uniqueId)
+		log.Println("starting timeout document")
+		database := MongoDBLibrary.Client.Database("sdcore")
+		timeoutColl := database.Collection("timeout")
+		//create stream to monitor actions on the collection
+		timeoutStream, err := timeoutColl.Watch(context.TODO(), mongo.Pipeline{})
+		if err != nil {
+			panic(err)
+		}
+		routineCtx, _ := context.WithCancel(context.Background())
+		//run routine to get messages from stream
+		go iterateChangeStream(routineCtx, timeoutStream)
+		//createDocumentWithTimeout("timeout", "yak1", 60, "createdAt")
+		//createDocumentWithTimeout("timeout", "yak2", 60, "createdAt")
+		ret := MongoDBLibrary.RestfulAPICreateTTLIndex("timeout", 20, "updatedAt")
+		if ret {
+			log.Println("TTL index create successful")
+		} else {
+			log.Println("TTL index exists already")
+		}
 
-	uniqueId = MongoDBLibrary.GetUniqueIdentityWithinRange(3, 6)
-	log.Println(uniqueId)
+		createDocumentWithCommonTimeout("timeout", "yak1")
+		updateDocumentWithCommonTimeout("timeout", "yak1")
+		go func() {
+			for {
+				createDocumentWithCommonTimeout("timeout", "yak2")
+				time.Sleep(5 * time.Second)
+			}
+		}()
 
-	uniqueId = MongoDBLibrary.GetUniqueIdentityWithinRange(3, 6)
-	log.Println(uniqueId)
+		ret = MongoDBLibrary.RestfulAPIDropTTLIndex("timeout", "updatedAt")
+		if !ret {
+			log.Println("TTL index drop failed")
+		}
+		ret = MongoDBLibrary.RestfulAPIPatchTTLIndex("timeout", 0, "expireAt")
+		if ret {
+			log.Println("TTL index patch successful")
+		} else {
+			log.Println("TTL index patch failed")
+		}
 
-	log.Println("TESTING POOL OF IDS")
+		createDocumentWithExpiryTime("timeout", "yak1", 30)
+		createDocumentWithExpiryTime("timeout", "yak3", 30)
+		updateDocumentWithExpiryTime("timeout", "yak3", 40)
+		updateDocumentWithExpiryTime("timeout", "yak1", 50)
+		//log.Println("sleeping for 120 seconds")
+		//time.Sleep(120 * time.Second)
+		//updateDocumentWithTimeout("timeout", "yak1", 200, "createdAt")
 
-	MongoDBLibrary.InitializePool("pool1", 10, 32)
+		uniqueId := MongoDBLibrary.GetUniqueIdentity("tmsi")
+		log.Println(uniqueId)
 
-	uniqueId, err = MongoDBLibrary.GetIDFromPool("pool1")
-	log.Println(uniqueId)
+		uniqueId = MongoDBLibrary.GetUniqueIdentity("amfUeNgapId")
+		log.Println(uniqueId)
 
-	MongoDBLibrary.ReleaseIDToPool("pool1", uniqueId)
+		uniqueId = MongoDBLibrary.GetUniqueIdentityWithinRange(3, 6)
+		log.Println(uniqueId)
 
-	uniqueId, err = MongoDBLibrary.GetIDFromPool("pool1")
-	log.Println(uniqueId)
+		uniqueId = MongoDBLibrary.GetUniqueIdentityWithinRange(3, 6)
+		log.Println(uniqueId)
 
-	uniqueId, err = MongoDBLibrary.GetIDFromPool("pool1")
-	log.Println(uniqueId)
+		log.Println("TESTING POOL OF IDS")
 
-	log.Println("TESTING INSERT APPROACH")
-	var randomId int32
+		MongoDBLibrary.InitializePool("pool1", 10, 32)
 
-	randomId, err = MongoDBLibrary.GetIDFromInsertPool("insertApproach")
-	log.Println(randomId)
-	if err != nil {
-		log.Println(err.Error())
-	}
+		uniqueId, err = MongoDBLibrary.GetIDFromPool("pool1")
+		log.Println(uniqueId)
 
-	MongoDBLibrary.InitializeInsertPool("insertApproach", 0, 1000, 3)
+		MongoDBLibrary.ReleaseIDToPool("pool1", uniqueId)
 
-	randomId, err = MongoDBLibrary.GetIDFromInsertPool("insertApproach")
-	log.Println(randomId)
-	if err != nil {
-		log.Println(err.Error())
-	}
+		uniqueId, err = MongoDBLibrary.GetIDFromPool("pool1")
+		log.Println(uniqueId)
 
-	randomId, err = MongoDBLibrary.GetIDFromInsertPool("insertApproach")
-	log.Println(randomId)
-	if err != nil {
-		log.Println(err.Error())
-	}
+		uniqueId, err = MongoDBLibrary.GetIDFromPool("pool1")
+		log.Println(uniqueId)
 
-	MongoDBLibrary.ReleaseIDToInsertPool("insertApproach", randomId)
+		log.Println("TESTING INSERT APPROACH")
+		var randomId int32
 
-	log.Println("TESTING RETRIES")
+		randomId, err = MongoDBLibrary.GetIDFromInsertPool("insertApproach")
+		log.Println(randomId)
+		if err != nil {
+			log.Println(err.Error())
+		}
 
-	MongoDBLibrary.InitializeInsertPool("testRetry", 0, 6, 3)
+		MongoDBLibrary.InitializeInsertPool("insertApproach", 0, 1000, 3)
 
-	randomId, err = MongoDBLibrary.GetIDFromInsertPool("testRetry")
-	log.Println(randomId)
-	if err != nil {
-		log.Println(err.Error())
-	}
+		randomId, err = MongoDBLibrary.GetIDFromInsertPool("insertApproach")
+		log.Println(randomId)
+		if err != nil {
+			log.Println(err.Error())
+		}
 
-	randomId, err = MongoDBLibrary.GetIDFromInsertPool("testRetry")
-	log.Println(randomId)
-	if err != nil {
-		log.Println(err.Error())
-	}
+		randomId, err = MongoDBLibrary.GetIDFromInsertPool("insertApproach")
+		log.Println(randomId)
+		if err != nil {
+			log.Println(err.Error())
+		}
 
-	log.Println("TESTING CHUNK APPROACH")
-	var lower int32
-	var upper int32
+		MongoDBLibrary.ReleaseIDToInsertPool("insertApproach", randomId)
 
-	randomId, lower, upper, err = MongoDBLibrary.GetChunkFromPool("studentIdsChunkApproach")
-	log.Println(randomId, lower, upper)
-	if err != nil {
-		log.Println(err.Error())
-	}
+		log.Println("TESTING RETRIES")
 
-	MongoDBLibrary.InitializeChunkPool("studentIdsChunkApproach", 0, 1000, 5, 100) // min, max, retries, chunkSize
+		MongoDBLibrary.InitializeInsertPool("testRetry", 0, 6, 3)
 
-	randomId, lower, upper, err = MongoDBLibrary.GetChunkFromPool("studentIdsChunkApproach")
-	log.Println(randomId, lower, upper)
-	if err != nil {
-		log.Println(err.Error())
-	}
+		randomId, err = MongoDBLibrary.GetIDFromInsertPool("testRetry")
+		log.Println(randomId)
+		if err != nil {
+			log.Println(err.Error())
+		}
 
-	randomId, lower, upper, err = MongoDBLibrary.GetChunkFromPool("studentIdsChunkApproach")
-	log.Println(randomId, lower, upper)
-	if err != nil {
-		log.Println(err.Error())
-	}
+		randomId, err = MongoDBLibrary.GetIDFromInsertPool("testRetry")
+		log.Println(randomId)
+		if err != nil {
+			log.Println(err.Error())
+		}
 
-	randomId, lower, upper, err = MongoDBLibrary.GetChunkFromPool("studentIdsChunkApproach")
-	log.Println(randomId, lower, upper)
-	if err != nil {
-		log.Println(err.Error())
-	}
+		log.Println("TESTING CHUNK APPROACH")
+		var lower int32
+		var upper int32
 
-	MongoDBLibrary.ReleaseChunkToPool("studentIdsChunkApproach", randomId)
+		randomId, lower, upper, err = MongoDBLibrary.GetChunkFromPool("studentIdsChunkApproach")
+		log.Println(randomId, lower, upper)
+		if err != nil {
+			log.Println(err.Error())
+		}
 
+		MongoDBLibrary.InitializeChunkPool("studentIdsChunkApproach", 0, 1000, 5, 100) // min, max, retries, chunkSize
+
+		randomId, lower, upper, err = MongoDBLibrary.GetChunkFromPool("studentIdsChunkApproach")
+		log.Println(randomId, lower, upper)
+		if err != nil {
+			log.Println(err.Error())
+		}
+
+		randomId, lower, upper, err = MongoDBLibrary.GetChunkFromPool("studentIdsChunkApproach")
+		log.Println(randomId, lower, upper)
+		if err != nil {
+			log.Println(err.Error())
+		}
+
+		randomId, lower, upper, err = MongoDBLibrary.GetChunkFromPool("studentIdsChunkApproach")
+		log.Println(randomId, lower, upper)
+		if err != nil {
+			log.Println(err.Error())
+		}
+
+		MongoDBLibrary.ReleaseChunkToPool("studentIdsChunkApproach", randomId)
+	*/
 	for {
 		time.Sleep(100 * time.Second)
 	}

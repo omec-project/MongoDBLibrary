@@ -767,3 +767,21 @@ func RestfulAPIPostMany(collName string, filter bson.M, postDataArray []interfac
 	collection.InsertMany(context.TODO(), postDataArray)
 	return false
 }
+
+func RestfulAPIPostOnly(collName string, filter bson.M, postData map[string]interface{}) bool {
+	collection := Client.Database(dbName).Collection(collName)
+
+	var checkItem map[string]interface{}
+	err := collection.FindOne(context.TODO(), filter).Decode(&checkItem)
+	if err == nil {
+		logger.MongoDBLog.Println("item not found: ", err)
+		return false
+	}
+	_, err = collection.InsertOne(context.TODO(), postData)
+	if err != nil {
+		logger.MongoDBLog.Println("insert failed : ", err)
+		return false
+	}
+	logger.MongoDBLog.Println("insert successful ")
+	return true
+}
