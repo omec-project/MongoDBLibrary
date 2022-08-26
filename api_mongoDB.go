@@ -771,13 +771,7 @@ func RestfulAPIPostMany(collName string, filter bson.M, postDataArray []interfac
 func RestfulAPIPostOnly(collName string, filter bson.M, postData map[string]interface{}) bool {
 	collection := Client.Database(dbName).Collection(collName)
 
-	var checkItem map[string]interface{}
-	err := collection.FindOne(context.TODO(), filter).Decode(&checkItem)
-	if err == nil {
-		logger.MongoDBLog.Println("item found: ", err)
-		return false
-	}
-	_, err = collection.InsertOne(context.TODO(), postData)
+	_, err := collection.InsertOne(context.TODO(), postData)
 	if err != nil {
 		logger.MongoDBLog.Println("insert failed : ", err)
 		return false
@@ -789,8 +783,11 @@ func RestfulAPIPostOnly(collName string, filter bson.M, postData map[string]inte
 func RestfulAPIPutOnly(collName string, filter bson.M, putData map[string]interface{}) error {
 	collection := Client.Database(dbName).Collection(collName)
 
-	res, err := collection.UpdateOne(context.TODO(), filter, bson.M{"$set": putData})
-	logger.MongoDBLog.Printf("update result %v & err %v ", res, err)
+	result, err := collection.UpdateOne(context.TODO(), filter, bson.M{"$set": putData})
+	if result.MatchedCount != 0 {
+		logger.MongoDBLog.Println("matched and replaced an existing document")
+		return nil
+	}
+	err = fmt.Errorf("Failed to updated")
 	return err
 }
-

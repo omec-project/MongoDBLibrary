@@ -39,13 +39,28 @@ func iterateChangeStream(routineCtx context.Context, stream *mongo.ChangeStream)
 	}
 }
 
+func scanChunk(i int32) bool {
+	log.Println("Received callback from module to scan Chunk resource ", i)
+	return false
+}
+
 func main() {
 	log.Println("dbtestapp started")
 	podn := os.Getenv("HOSTNAME")
 	podi := os.Getenv("PDO_IP")
 	podId := drsm.PodId{PodName: podn, PodIp: podi}
 	db := drsm.DbInfo{Url: "mongodb://mongodb-arbiter-headless", Name: "sdcore"}
-	d, _ := drsm.InitDRSM("ngapid", podId, db)
+
+	t := time.Now().UnixNano()
+	opt := &drsm.Options{}
+	log.Println("****timestamp **** ", t)
+	if t%2 == 0 {
+		log.Println("****Running in Demux mode****")
+		opt.Mode = drsm.ResourceDemux
+	} else {
+		opt.ScanCb = scanChunk
+	}
+	d, _ := drsm.InitDRSM("ngapid", podId, db, opt)
 	id, err := d.AllocateIntID("ngapid")
 	if err != nil {
 		log.Println("Id allocation error ", err)
