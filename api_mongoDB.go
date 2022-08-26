@@ -785,3 +785,11 @@ func RestfulAPIPostOnly(collName string, filter bson.M, postData map[string]inte
 	logger.MongoDBLog.Println("insert successful ")
 	return true
 }
+
+func RestfulAPIPutOnly(collName string, filter bson.M, putData map[string]interface{}) error {
+	collection := Client.Database(dbName).Collection(collName)
+
+	res, err := collection.UpdateOne(context.TODO(), filter, bson.M{"$set": putData})
+	return err
+}
+
