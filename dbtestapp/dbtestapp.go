@@ -58,7 +58,7 @@ func main() {
 		log.Println("****Running in Demux mode****")
 		opt.Mode = drsm.ResourceDemux
 	} else {
-		opt.ScanCb = scanChunk
+		opt.ResourceValidCb = scanChunk
 	}
 	d, _ := drsm.InitDRSM("ngapid", podId, db, opt)
 	id, err := d.AllocateIntID("ngapid")

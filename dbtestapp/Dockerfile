@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-FROM golang:1.14.4-stretch AS test
+FROM golang:1.18.0-stretch AS test
 
 LABEL maintainer="ONF <omec-dev@opennetworking.org>"
 
