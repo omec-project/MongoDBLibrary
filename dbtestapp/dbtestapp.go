@@ -46,8 +46,8 @@ func scanChunk(i int32) bool {
 
 func main() {
 	log.Println("dbtestapp started")
-	podn := os.Getenv("HOSTNAME")
-	podi := os.Getenv("PDO_IP")
+	podn := os.Getenv("HOSTNAME") // pod-name
+	podi := os.Getenv("POD_IP")
 	podId := drsm.PodId{PodName: podn, PodIp: podi}
 	db := drsm.DbInfo{Url: "mongodb://mongodb-arbiter-headless", Name: "sdcore"}
 
@@ -59,13 +59,50 @@ func main() {
 		opt.Mode = drsm.ResourceDemux
 	} else {
 		opt.ResourceValidCb = scanChunk
+        opt.IpPool = make(map[string]string)
+        opt.IpPool["pool1"] = "192.168.0.0/16"
 	}
 	d, _ := drsm.InitDRSM("ngapid", podId, db, opt)
-	id, err := d.AllocateIntID("ngapid")
+	id, err := d.AllocateInt32ID()
 	if err != nil {
 		log.Println("Id allocation error ", err)
 	}
 	log.Printf("Received id %v ", id)
+/*
+    // code to acquire more than 1000 Ids
+	go func() {
+        var count int32 = 0
+		ticker := time.NewTicker(50 * time.Millisecond)
+		for {
+			select {
+			case <-ticker.C:
+	            id, _ := d.AllocateInt32ID()
+	            log.Printf("Received id %v ", id)
+                count++
+                if count > 1005 {
+                    return
+                }
+			}
+		}
+	}()
+*/
+
+    d.AcquireIp("pool1")
+    go func() {
+        var count int32 = 0
+		ticker := time.NewTicker(50 * time.Millisecond)
+		for {
+			select {
+			case <-ticker.C:
+	            id, _ := d.AcquireIp("pool1")
+	            log.Printf("Received ip %v ", id)
+                count++
+                if count > 10 {
+                    return
+                }
+			}
+		}
+    }()
 
 	/*
 		// connect to mongoDB
