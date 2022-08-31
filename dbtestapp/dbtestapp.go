@@ -59,50 +59,72 @@ func main() {
 		opt.Mode = drsm.ResourceDemux
 	} else {
 		opt.ResourceValidCb = scanChunk
-        opt.IpPool = make(map[string]string)
-        opt.IpPool["pool1"] = "192.168.0.0/16"
+		opt.IpPool = make(map[string]string)
+		opt.IpPool["pool1"] = "192.168.1.0/24"
+		opt.IpPool["pool2"] = "192.168.2.0/24"
 	}
 	d, _ := drsm.InitDRSM("ngapid", podId, db, opt)
-	id, err := d.AllocateInt32ID()
-	if err != nil {
-		log.Println("Id allocation error ", err)
-	}
-	log.Printf("Received id %v ", id)
-/*
-    // code to acquire more than 1000 Ids
-	go func() {
-        var count int32 = 0
-		ticker := time.NewTicker(50 * time.Millisecond)
-		for {
-			select {
-			case <-ticker.C:
-	            id, _ := d.AllocateInt32ID()
-	            log.Printf("Received id %v ", id)
-                count++
-                if count > 1005 {
-                    return
-                }
-			}
+	if opt.Mode != drsm.ResourceDemux {
+		id, err := d.AllocateInt32ID()
+		if err != nil {
+			log.Println("Id allocation error ", err)
 		}
-	}()
-*/
+		log.Printf("Received id %v ", id)
+		/*
+		       // code to acquire more than 1000 Ids
+		   	go func() {
+		           var count int32 = 0
+		   		ticker := time.NewTicker(50 * time.Millisecond)
+		   		for {
+		   			select {
+		   			case <-ticker.C:
+		   	            id, _ := d.AllocateInt32ID()
+		   	            log.Printf("Received id %v ", id)
+		                   count++
+		                   if count > 1005 {
+		                       return
+		                   }
+		   			}
+		   		}
+		   	}()
+		*/
 
-    d.AcquireIp("pool1")
-    go func() {
-        var count int32 = 0
-		ticker := time.NewTicker(50 * time.Millisecond)
-		for {
-			select {
-			case <-ticker.C:
-	            id, _ := d.AcquireIp("pool1")
-	            log.Printf("Received ip %v ", id)
-                count++
-                if count > 10 {
-                    return
-                }
-			}
+		ip1, err := d.AcquireIp("pool1")
+		if err != nil {
+			log.Println("pool1 : Ip allocation error ", err)
+		} else {
+			log.Printf("pool1 : Received ip %v ", ip1)
 		}
-    }()
+
+		go func() {
+			var count int32 = 0
+			ticker := time.NewTicker(50 * time.Millisecond)
+			for {
+				select {
+				case <-ticker.C:
+					ip, err := d.AcquireIp("pool1")
+					if err != nil {
+						log.Println("pool1 : Ip allocation error ", err)
+					} else {
+						log.Printf("pool1 : Received ip %v ", ip)
+					}
+					count++
+					if count > 10 {
+						return
+					}
+				}
+			}
+		}()
+		d.ReleaseIp("pool1", ip1)
+
+		ip2, err := d.AcquireIp("pool2")
+		if err != nil {
+			log.Println("pool2 : Ip allocation error ", err)
+		} else {
+			log.Printf("pool2 : Received ip %v ", ip2)
+		}
+		d.ReleaseIp("pool2", ip2)
+	}
 
 	/*
 		// connect to mongoDB
