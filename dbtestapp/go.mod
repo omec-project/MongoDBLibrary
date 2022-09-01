@@ -6,7 +6,7 @@ replace github.com/omec-project/MongoDBLibrary => ../
 
 require (
 	github.com/omec-project/MongoDBLibrary v1.1.4-0.20220825211024-3bacf8295862
-	github.com/thakurajayL/drsm v0.0.71-dev
+	github.com/thakurajayL/drsm v0.0.72-dev
 	go.mongodb.org/mongo-driver v1.10.1
 )
 
@@ -42,7 +42,7 @@ require (
 	github.com/omec-project/path_util v1.1.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/sirupsen/logrus v1.9.0 // indirect
-	github.com/thakurajayL/go-ipam v0.0.4-dev // indirect
+	github.com/thakurajayL/go-ipam v0.0.5-dev // indirect
 	github.com/ugorji/go/codec v1.2.1 // indirect
 	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
 	github.com/xdg-go/scram v1.1.1 // indirect

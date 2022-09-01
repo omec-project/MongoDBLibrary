@@ -265,10 +265,10 @@ github.com/stretchr/testify v1.6.1/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/
 github.com/stretchr/testify v1.7.0/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
 github.com/stretchr/testify v1.8.0 h1:pSgiaMZlXftHpm5L7V1+rVB+AZJydKsMxsQBIJw4PKk=
 github.com/testcontainers/testcontainers-go v0.13.0 h1:OUujSlEGsXVo/ykPVZk3KanBNGN0TYb/7oKIPVn15JA=
-github.com/thakurajayL/drsm v0.0.71-dev h1:vGhxqPwH2pHkD7mlMXbpOfT211en6yASBz1n8MUPH0k=
-github.com/thakurajayL/drsm v0.0.71-dev/go.mod h1:6lVhb9KQrMVVIyN2oTfiUakFJ6yGGu14IOWA4/0Q7zw=
-github.com/thakurajayL/go-ipam v0.0.4-dev h1:P3TU0pWtohRdPTgm7meYnJjcFaZVH1g/dL9/qbeqrs4=
-github.com/thakurajayL/go-ipam v0.0.4-dev/go.mod h1:kriWKdZOK9c1i9XAEjx+FfEAjzV/mx2YL3Jl4dhJ3IY=
+github.com/thakurajayL/drsm v0.0.72-dev h1:yDRpKCMFJ8DR0Ju+6BxHvCTDFuyT6S4xfLJYXZwEhtI=
+github.com/thakurajayL/drsm v0.0.72-dev/go.mod h1:qlhyDxxZyBLB93NPp4yRknL+4aihgyw/gbskoIQkje4=
+github.com/thakurajayL/go-ipam v0.0.5-dev h1:EgOkLUKjGqVLjQ5RKK14x2W/EUhSm8bPjiAC0g1tyPw=
+github.com/thakurajayL/go-ipam v0.0.5-dev/go.mod h1:kriWKdZOK9c1i9XAEjx+FfEAjzV/mx2YL3Jl4dhJ3IY=
 github.com/tidwall/pretty v1.0.0 h1:HsD+QiTn7sK6flMKIvNmpqz1qrpP3Ps6jOKIKMooyg4=
 github.com/tidwall/pretty v1.0.0/go.mod h1:XNkn88O1ChpSDQmQeStsy+sBenx6DDtFZJxhVysOjyk=
 github.com/ugorji/go v1.1.7/go.mod h1:kZn38zHttfInRq0xu/PH0az30d+z6vm202qpg1oXVMw=
