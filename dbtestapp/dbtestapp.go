@@ -7,44 +7,21 @@
 package main
 
 import (
-	"log"
-	"time"
-	"go.mongodb.org/mongo-driver/bson"
 	"github.com/omec-project/MongoDBLibrary"
+	"log"
 )
 
-
-// TODO : take DB name from helm chart 
-// TODO : inbuild shell commands to  
+// TODO : take DB name from helm chart
+// TODO : inbuild shell commands to
 
 func main() {
 	log.Println("dbtestapp started")
+
 	// connect to mongoDB
 	MongoDBLibrary.SetMongoDB("sdcore", "mongodb://mongodb-arbiter-headless")
 
-    initDrsm("ngapid")
+	initDrsm("ngapid")
 
+	//blocking
 	http_server()
 }
-
-func deleteDocumentWithTimeout(name string) {
-	putData := bson.M{}
-	putData["name"] = name
-	filter := bson.M{}
-	MongoDBLibrary.RestfulAPIDeleteOne("timeout", filter)
-}
-
-func createDocumentWithExpiryTime(collName string, name string, timeVal int) {
-	putData := bson.M{}
-	putData["name"] = name
-	putData["createdAt"] = time.Now()
-	timein := time.Now().Local().Add(time.Second * time.Duration(timeVal))
-	//log.Println("updated timeout : ", timein)
-	putData["expireAt"] = timein
-	//putData["updatedAt"] = time.Now()
-	filter := bson.M{"name": name}
-	MongoDBLibrary.RestfulAPIPutOne(collName, filter, putData)
-}
-
-
-

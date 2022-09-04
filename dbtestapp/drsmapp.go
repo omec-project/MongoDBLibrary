@@ -3,15 +3,15 @@ package main
 import (
 	"github.com/thakurajayL/drsm"
 	"log"
-    "os"
-    "time"
+	"os"
+	"time"
 )
 
 type drsmInterface struct {
 	initDrsm bool
 	Mode     drsm.DrsmMode
-    d        *drsm.Drsm
-    poolName string
+	d        *drsm.Drsm
+	poolName string
 }
 
 var drsmIntf drsmInterface
@@ -27,7 +27,7 @@ func initDrsm(resName string) {
 		return
 	}
 	drsmIntf.initDrsm = true
-    drsmIntf.poolName = resName
+	drsmIntf.poolName = resName
 
 	podn := os.Getenv("HOSTNAME") // pod-name
 	podi := os.Getenv("POD_IP")
@@ -60,7 +60,7 @@ func AllocateInt32One(resName string) int32 {
 
 func AllocateInt32Many(resName string, number int32) []int32 {
 	// code to acquire more than 1000 Ids
-    var resIds []int32
+	var resIds []int32
 	var count int32 = 0
 
 	ticker := time.NewTicker(50 * time.Millisecond)
@@ -68,9 +68,9 @@ func AllocateInt32Many(resName string, number int32) []int32 {
 		select {
 		case <-ticker.C:
 			id, _ := drsmIntf.d.AllocateInt32ID()
-            if id != 0 {
-                resIds = append(resIds, id)
-            }
+			if id != 0 {
+				resIds = append(resIds, id)
+			}
 			log.Printf("Received id %v ", id)
 			count++
 			if count >= number {
@@ -100,7 +100,7 @@ func IpAddressAllocOne(pool string) (string, error) {
 }
 
 func IpAddressAllocMany(pool string, number int32) []string {
-    var resIds []string
+	var resIds []string
 	var count int32 = 0
 
 	ticker := time.NewTicker(50 * time.Millisecond)
@@ -112,10 +112,10 @@ func IpAddressAllocMany(pool string, number int32) []string {
 				log.Printf("%v : Ip allocation error %v", pool, err)
 			} else {
 				log.Printf("%v : Received ip %v ", pool, ip)
-                resIds = append(resIds, ip)
+				resIds = append(resIds, ip)
 			}
 			count++
-			if count  >= number {
+			if count >= number {
 				return resIds
 			}
 		}
@@ -124,5 +124,5 @@ func IpAddressAllocMany(pool string, number int32) []string {
 
 func IpAddressRelease(pool, ip string) error {
 	err := drsmIntf.d.ReleaseIp(pool, ip)
-    return err
+	return err
 }

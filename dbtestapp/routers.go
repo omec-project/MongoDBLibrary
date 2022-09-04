@@ -7,10 +7,10 @@ package main
 import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/omec-project/MongoDBLibrary"
 	"log"
 	"net/http"
 	"strconv"
-	"github.com/omec-project/MongoDBLibrary"
 )
 
 // Route is the information for every URI.
@@ -125,7 +125,6 @@ var routes = Routes{
 		"/chunk-from-pool/:chunk/",
 		GetChunkFromPoolTest,
 	},
-
 }
 
 func http_server() {
@@ -164,9 +163,9 @@ func IntegerResourceNamePost(c *gin.Context) {
 	}
 	number, ok := c.GetQuery("number")
 	if ok == true {
-		n1,_ := strconv.Atoi(number)
-        var n int32
-        n = int32(n1)
+		n1, _ := strconv.Atoi(number)
+		var n int32
+		n = int32(n1)
 		resId := AllocateInt32Many(resName, n)
 		if len(resId) == 0 {
 			log.Println("Id allocation error ")
@@ -204,15 +203,15 @@ func IntegerResourceNameDelete(c *gin.Context) {
 		return
 	}
 	log.Printf("Received resource delete. Res Id %v ", resId)
-    r,_ := strconv.Atoi(resId)
-    rid := int32(r)
+	r, _ := strconv.Atoi(resId)
+	rid := int32(r)
 
-    err := ReleaseInt32One(resName, rid)
-    if err != nil {
+	err := ReleaseInt32One(resName, rid)
+	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{})
-    } else {
-	    c.JSON(http.StatusOK, gin.H{})
-    }
+	} else {
+		c.JSON(http.StatusOK, gin.H{})
+	}
 	return
 }
 
@@ -226,9 +225,9 @@ func Ipv4ResourceNamePost(c *gin.Context) {
 	}
 	number, ok := c.GetQuery("number")
 	if ok == true {
-		n1,_ := strconv.Atoi(number)
-        var n int32
-        n = int32(n1)
+		n1, _ := strconv.Atoi(number)
+		var n int32
+		n = int32(n1)
 		resId := IpAddressAllocMany(resName, n)
 		if len(resId) == 0 {
 			log.Println("Id allocation error ")
@@ -238,7 +237,7 @@ func Ipv4ResourceNamePost(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{})
 
 	} else {
-		resId,err := IpAddressAllocOne(resName)
+		resId, err := IpAddressAllocOne(resName)
 		if err != nil {
 			log.Println("Id allocation error ")
 			c.JSON(http.StatusBadRequest, gin.H{})
@@ -267,14 +266,14 @@ func Ipv4ResourceNameDelete(c *gin.Context) {
 	}
 	log.Printf("Received resource delete. Res Id %v ", resId)
 
-    err := IpAddressRelease(resName, resId)
-    if err != nil {
-	    log.Printf("IP address %v release failed -  %v ", resId, err)
+	err := IpAddressRelease(resName, resId)
+	if err != nil {
+		log.Printf("IP address %v release failed -  %v ", resId, err)
 		c.JSON(http.StatusBadRequest, gin.H{})
-    } else {
-	    log.Printf("IP address %v release success ", resId)
-	    c.JSON(http.StatusOK, gin.H{})
-    }
+	} else {
+		log.Printf("IP address %v release success ", resId)
+		c.JSON(http.StatusOK, gin.H{})
+	}
 	return
 }
 
@@ -299,17 +298,17 @@ func GetUniqueIdentityWithinRangeTest(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{})
 		return
 	}
-	min, ok := GetQuery("min",c)
+	min, ok := GetQuery("min", c)
 	if ok == false {
 		c.JSON(http.StatusBadRequest, gin.H{})
 		return
-    }
+	}
 
 	max, ok := GetQuery("max", c)
 	if ok == false {
 		c.JSON(http.StatusBadRequest, gin.H{})
 		return
-    }
+	}
 
 	uniqueId := MongoDBLibrary.GetUniqueIdentityWithinRange(resName, min, max)
 	log.Println(uniqueId)
@@ -317,7 +316,7 @@ func GetUniqueIdentityWithinRangeTest(c *gin.Context) {
 }
 
 func GetIdFromPoolTest(c *gin.Context) {
-    log.Println("TESTING POOL OF IDS")
+	log.Println("TESTING POOL OF IDS")
 
 	poolName, exists := c.Params.Get("pool")
 	if exists == false {
@@ -330,13 +329,13 @@ func GetIdFromPoolTest(c *gin.Context) {
 	if ok == false {
 		c.JSON(http.StatusBadRequest, gin.H{})
 		return
-    }
+	}
 
 	max, ok := GetQuery("max", c)
 	if ok == false {
 		c.JSON(http.StatusBadRequest, gin.H{})
 		return
-    }
+	}
 
 	MongoDBLibrary.InitializePool(poolName, min, max)
 
@@ -369,20 +368,19 @@ func GetIdFromInsertPoolTest(c *gin.Context) {
 	if ok == false {
 		c.JSON(http.StatusBadRequest, gin.H{})
 		return
-    }
+	}
 
 	max, ok := GetQuery("max", c)
 	if ok == false {
 		c.JSON(http.StatusBadRequest, gin.H{})
 		return
-    }
+	}
 
 	retry, ok := GetQuery("retry", c)
 	if ok == false {
 		c.JSON(http.StatusBadRequest, gin.H{})
 		return
-    }
-
+	}
 
 	MongoDBLibrary.InitializeInsertPool(pool, min, max, retry)
 
@@ -391,7 +389,6 @@ func GetIdFromInsertPoolTest(c *gin.Context) {
 	if err != nil {
 		log.Println(err.Error())
 	}
-
 
 	randomId, err = MongoDBLibrary.GetIDFromInsertPool(pool)
 	log.Println(randomId)
@@ -423,28 +420,27 @@ func GetChunkFromPoolTest(c *gin.Context) {
 
 	min, ok := GetQuery("min", c)
 	if ok == false {
-        c.JSON(http.StatusBadRequest, gin.H{})
+		c.JSON(http.StatusBadRequest, gin.H{})
 		return
-    }
+	}
 
 	max, ok := GetQuery("max", c)
 	if ok == false {
 		c.JSON(http.StatusBadRequest, gin.H{})
 		return
-    }
+	}
 
 	retry, ok := GetQuery("retry", c)
 	if ok == false {
 		c.JSON(http.StatusBadRequest, gin.H{})
 		return
-    }
+	}
 
 	csize, ok := GetQuery("csize", c)
 	if ok == false {
 		c.JSON(http.StatusBadRequest, gin.H{})
 		return
-    }
-
+	}
 
 	MongoDBLibrary.InitializeChunkPool(resName, min, max, retry, csize) // min, max, retries, chunkSize
 
@@ -472,12 +468,12 @@ func GetChunkFromPoolTest(c *gin.Context) {
 
 }
 
-func GetQuery(param string, c *gin.Context) (int32, bool){
-    p1, ok := c.GetQuery(param)
+func GetQuery(param string, c *gin.Context) (int32, bool) {
+	p1, ok := c.GetQuery(param)
 	if ok == false {
 		return 0, false
-    }
-	p2,_ := strconv.Atoi(p1)
-    p := int32(p2)
-    return p, true
+	}
+	p2, _ := strconv.Atoi(p1)
+	p := int32(p2)
+	return p, true
 }

@@ -1,14 +1,14 @@
 package main
 
 import (
-    "log"
-    "time"
-    "context"
-	"net/http"
-	"github.com/omec-project/MongoDBLibrary"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/bson"
+	"context"
 	"github.com/gin-gonic/gin"
+	"github.com/omec-project/MongoDBLibrary"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"log"
+	"net/http"
+	"time"
 )
 
 func iterateChangeStream(routineCtx context.Context, stream *mongo.ChangeStream) {
@@ -30,7 +30,7 @@ func timeoutTest(c *gin.Context) {
 	database := MongoDBLibrary.Client.Database("sdcore")
 	timeoutColl := database.Collection("timeout")
 
-    // TODO : library should provide this API
+	// TODO : library should provide this API
 	//create stream to monitor actions on the collection
 	timeoutStream, err := timeoutColl.Watch(context.TODO(), mongo.Pipeline{})
 	if err != nil {
@@ -109,3 +109,21 @@ func updateDocumentWithExpiryTime(collName string, name string, timeVal int) {
 	MongoDBLibrary.RestfulAPIPutOne(collName, filter, putData)
 }
 
+func createDocumentWithExpiryTime(collName string, name string, timeVal int) {
+	putData := bson.M{}
+	putData["name"] = name
+	putData["createdAt"] = time.Now()
+	timein := time.Now().Local().Add(time.Second * time.Duration(timeVal))
+	//log.Println("updated timeout : ", timein)
+	putData["expireAt"] = timein
+	//putData["updatedAt"] = time.Now()
+	filter := bson.M{"name": name}
+	MongoDBLibrary.RestfulAPIPutOne(collName, filter, putData)
+}
+
+func deleteDocumentWithTimeout(name string) {
+	putData := bson.M{}
+	putData["name"] = name
+	filter := bson.M{}
+	MongoDBLibrary.RestfulAPIDeleteOne("timeout", filter)
+}

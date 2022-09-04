@@ -29,7 +29,7 @@ import (
 
 var Client *mongo.Client = nil
 var dbName string
-var pools = map[string]map[string]int{}
+var pools = map[string]map[string]int32{}
 
 func SetMongoDB(setdbName string, url string) {
 
@@ -115,11 +115,11 @@ func GetUniqueIdentity(idName string) int32 {
 }
 
 /* Get a unique id within a given range. */
-func GetUniqueIdentityWithinRange(min int32, max int32) int32 {
+func GetUniqueIdentityWithinRange(pool string, min int32, max int32) int32 {
 	rangeCollection := Client.Database(dbName).Collection("range")
 
 	rangeFilter := bson.M{}
-	rangeFilter["_id"] = "uniqueIdentity"
+	rangeFilter["_id"] = pool
 
 	for {
 		count := rangeCollection.FindOneAndUpdate(context.TODO(), rangeFilter, bson.M{"$inc": bson.M{"count": 1}})
@@ -127,7 +127,7 @@ func GetUniqueIdentityWithinRange(min int32, max int32) int32 {
 		if count.Err() != nil {
 			counterData := bson.M{}
 			counterData["count"] = min
-			counterData["_id"] = "uniqueIdentity"
+			counterData["_id"] = pool
 			rangeCollection.InsertOne(context.TODO(), counterData)
 
 			continue
@@ -147,9 +147,9 @@ func GetUniqueIdentityWithinRange(min int32, max int32) int32 {
 }
 
 /* Initialize pool of ids with max and min values and chunk size and amount of retries to get a chunk. */
-func InitializeChunkPool(poolName string, min int, max int, retries int, chunkSize int) {
+func InitializeChunkPool(poolName string, min int32, max int32, retries int32, chunkSize int32) {
 	logger.MongoDBLog.Println("ENTERING InitializeChunkPool")
-	var poolData = map[string]int{}
+	var poolData = map[string]int32{}
 	poolData["min"] = min
 	poolData["max"] = max
 	poolData["retries"] = retries
@@ -174,11 +174,11 @@ func GetChunkFromPool(poolName string) (int32, int32, int32, error) {
 	max := pool["max"]
 	retries := pool["retries"]
 	chunkSize := pool["chunkSize"]
-	totalChunks := int((max - min) / chunkSize)
+	totalChunks := int32((max - min) / chunkSize)
 
-	i := 0
+	var i int32 = 0
 	for i < retries {
-		random := rand.Intn(totalChunks)
+		random := rand.Int31n(totalChunks)
 		lower := min + (random * chunkSize)
 		upper := lower + chunkSize
 		poolCollection := Client.Database(dbName).Collection(poolName)
@@ -229,9 +229,9 @@ func ReleaseChunkToPool(poolName string, id int32) {
 }
 
 /* Initialize pool of ids with max and min values. */
-func InitializeInsertPool(poolName string, min int, max int, retries int) {
+func InitializeInsertPool(poolName string, min int32, max int32, retries int32) {
 	logger.MongoDBLog.Println("ENTERING InitializeInsertPool")
-	var poolData = map[string]int{}
+	var poolData = map[string]int32{}
 	poolData["min"] = min
 	poolData["max"] = max
 	poolData["retries"] = retries
@@ -254,9 +254,9 @@ func GetIDFromInsertPool(poolName string) (int32, error) {
 	min := pool["min"]
 	max := pool["max"]
 	retries := pool["retries"]
-	i := 0
+	var i int32 = 0
 	for i < retries {
-		random := rand.Intn(max-min) + min // returns random int in [0, max-min-1] + min
+		random := rand.Int31n(max-min) + min // returns random int in [0, max-min-1] + min
 		poolCollection := Client.Database(dbName).Collection(poolName)
 
 		// Create an instance of an options and set the desired options

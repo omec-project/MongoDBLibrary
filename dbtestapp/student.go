@@ -1,13 +1,12 @@
 package main
 
-import
-(
-	"log"
-	"time"
-	"net/http"
+import (
 	"github.com/gin-gonic/gin"
 	"github.com/omec-project/MongoDBLibrary"
 	"go.mongodb.org/mongo-driver/bson"
+	"log"
+	"net/http"
+	"time"
 )
 
 type Student struct {
@@ -21,7 +20,7 @@ type Student struct {
 
 func StudentRecordTest(c *gin.Context) {
 	c.String(http.StatusOK, "StudentRecordTest!")
-    collName:= "student"
+	collName := "student"
 	_, errVal := MongoDBLibrary.CreateIndex(collName, "Name")
 	if errVal != nil {
 		log.Println("Create index failed on Name field : ", errVal)
@@ -42,7 +41,7 @@ func StudentRecordTest(c *gin.Context) {
 	insertStudentInDB(collName, "John Smith", 25)
 
 	// test document fetch from student that doesn't exist.
-    qName := "Nerf Doodle"
+	qName := "Nerf Doodle"
 	student, err = getStudentFromDB(collName, qName)
 	if err == nil {
 		log.Printf("Retrieved student %v ", qName)
