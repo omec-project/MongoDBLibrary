@@ -13,7 +13,9 @@ RUN cd $GOPATH/src && mkdir -p dbtestapp
 COPY . $GOPATH/src/dbtestapp
 RUN cd $GOPATH/src/dbtestapp && go install 
 
-FROM test AS dbtestapp
+FROM alpine:3.16 AS dbtestapp
+RUN apk add -U vim strace net-tools curl netcat-openbsd bind-tools bash
+
 WORKDIR /dbtestapp
 RUN mkdir -p /dbtestapp/bin
 COPY --from=test $GOPATH/bin/* /dbtestapp/bin/
