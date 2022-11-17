@@ -36,15 +36,20 @@ func SetMongoDB(setdbName string, url string) {
 	if Client != nil {
 		return
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI(url))
-	defer cancel()
-	if err != nil {
-		//defer cancel()
-		logger.MongoDBLog.Println("SetMongoDB: Mongo connect failed for url (", url, ") : ", err.Error())
+	for {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		client, err := mongo.Connect(ctx, options.Client().ApplyURI(url))
+		defer cancel()
+		if err != nil {
+			//defer cancel()
+			logger.MongoDBLog.Println("SetMongoDB: Mongo connect failed for url (", url, ") : ", err.Error())
+			time.Sleep(2 * time.Second)
+			continue
+		}
+		Client = client
+		dbName = setdbName
+		break
 	}
-	Client = client
-	dbName = setdbName
 }
 
 func RestfulAPIGetOne(collName string, filter bson.M) map[string]interface{} {
